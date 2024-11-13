@@ -181,11 +181,11 @@ proctype Switch(chan in, out){
 
 init {
 
-    chan one = [N] of {mtype};
-    chan two = [N] of {mtype};
-    chan three = [N] of {mtype};
-    chan four = [N] of {mtype};
-    chan five = [N] of {mtype};
+    chan one = [0] of {mtype};
+    chan two = [0] of {mtype};
+    chan three = [0] of {mtype};
+    chan four = [0] of {mtype};
+    chan five = [0] of {mtype};
     
     /* Init process for all system states before corresponding processes will be started */
     byte i;
