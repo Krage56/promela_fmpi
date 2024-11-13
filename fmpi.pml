@@ -14,11 +14,6 @@ mtype = {
     ACK_Switch 
 }
 
-chan one = [N * 2] of {mtype}
-chan two = [N * 2] of {mtype}
-chan three = [N * 2] of {mtype}
-chan four = [N * 2] of {mtype}
-chan five = [N * 2] of {mtype}
 
 short flow_entry_cont = 0;
 short flow_entry_switch = 0;
@@ -29,44 +24,46 @@ inline print_state(){
     printf("f_cont = %h, f_switch = %h\n", flow_entry_cont, flow_entry_switch);
 }
 
-proctype App(){
+proctype App(chan out){
     do
     ::((states_app[0])) -> atomic {
         flow_entry_cont = 1;
-        one!PostFlow_App;
+        out!PostFlow_App;
         states_app[0] = false;
         states_app[1] = true;
         print_state();
     }
     ::((states_app[1]) && (flow_entry_cont == 1)) -> atomic {
         flow_entry_cont = 0;
-        one!DeleteFlow_App;
+        out!DeleteFlow_App;
         states_app[1] = false;
         states_app[0] = true;
     }
     ::((states_app[1]) && (flow_entry_cont <= 10)) -> atomic {
         flow_entry_cont = flow_entry_cont + 1;
-        one!PostFlow_App;
+        out!PostFlow_App;
     }
     ::((states_app[1]) && (flow_entry_cont > 1)) -> atomic {
         flow_entry_cont = flow_entry_cont - 1;
-        one!DeleteFlow_App;
+        out!DeleteFlow_App;
     }
     od
 }
 
-proctype Controller(){
+proctype Controller(chan in1, in2, out){
     do
-    ::(states_controller[0] && one?PostFlow_App) -> atomic {
+    ::((states_controller[0])) -> atomic {
+        in1?PostFlow_App;
         states_controller[0] = false;
         states_controller[1] = true;
     }
-    ::(states_controller[0] && one?DataFlow_App) -> atomic {
+    ::((states_controller[0])) -> atomic {
+        in1?DeleteFlow_App;
         states_controller[0] = false;
         states_controller[3] = true;
     }
     ::(states_controller[1]) -> atomic {
-        two!PostFlow_Cont;
+        out!PostFlow_Cont;
         states_controller[1] = false;
         states_controller[2] = true;
     }
@@ -75,13 +72,13 @@ proctype Controller(){
         states_controller[2] = false;
         states_controller[1] = true;
     }
-    ::(states_controller[2] && five?<ACK_Channel2>) -> atomic {
-        five?ACK_Channel2;
+    ::((states_controller[2])) -> atomic {
+        in2?ACK_Channel2;
         states_controller[2] = false;
         states_controller[0] = true;
     }
     ::(states_controller[3]) -> atomic {
-        two!DataFlow_Cont;
+        out!DeleteFlow_Cont;
         states_controller[3] = false;
         states_controller[4] = true;
     }
@@ -90,21 +87,23 @@ proctype Controller(){
         states_controller[4] = false;
         states_controller[3] = true;
     }
-    ::(states_controller[4] && five?<ACK_Channel2>) -> atomic {
-        five?ACK_Channel2;
+    ::((states_controller[4])) -> atomic {
+        in2?ACK_Channel2;
         states_controller[4] = false;
         states_controller[0] = true;
     }
     od
 }
 
-proctype Channel1(){
+proctype Channel1(chan in, out){
     do
-    ::((states_channel1[0]) && (two?PostFlow_Cont)) -> atomic {
+    ::((states_channel1[0])) -> atomic {
+        in?PostFlow_Cont;
         states_channel1[0] = false;
         states_channel1[1] = true;
     }
-    ::((states_channel1[0]) && (two?DataFlow_Cont)) -> atomic {
+    ::((states_channel1[0])) -> atomic {
+        in?DeleteFlow_Cont;
         states_channel1[0] = false;
         states_channel1[2] = true;
     }
@@ -114,7 +113,7 @@ proctype Channel1(){
         states_channel1[0] = true;
     }
     ::(states_channel1[1]) -> atomic {
-        three!PostFlow_Channel1;
+        out!PostFlow_Channel1;
         states_channel1[1] = false;
         states_channel1[0] = true;
     }
@@ -124,16 +123,17 @@ proctype Channel1(){
         states_channel1[0] = true;
     }
     ::(states_channel1[2]) -> atomic {
-        three!DataFlow_Channel1;
+        out!DeleteFlow_Channel1;
         states_channel1[1] = false;
         states_channel1[0] = true;
     }
     od
 }
 
-proctype Channel2(){   
+proctype Channel2(chan in, out){   
     do
-    ::((states_channel2[0]) && (four?ACK_Switch)) -> atomic {
+    ::((states_channel2[0])) -> atomic {
+        in?ACK_Switch;
         states_channel2[0] = false;
         states_channel2[1] = true;
     }
@@ -143,27 +143,29 @@ proctype Channel2(){
         states_channel2[0] = true;
     }
     ::(states_channel2[1]) -> atomic {
-        five!ACK_Channel2;
+        out!ACK_Channel2;
         states_channel2[1] = false;
         states_channel2[0] = true;
     }
     od
 }
 
-proctype Switch(){
+proctype Switch(chan in, out){
     do
-    ::(states_switch[0] && three?PostFlow_Channel1) -> atomic {
+    ::(states_switch[0]) -> atomic {
+        in?PostFlow_Channel1;
         flow_entry_switch = flow_entry_switch + 1;
         states_switch[0] = false;
         states_switch[1] = true;
     }
-    ::(states_switch[0] && three?DataFlow_Channel1) -> atomic {
+    ::(states_switch[0]) -> atomic {
+        in?DeleteFlow_Channel1;
         flow_entry_switch = flow_entry_switch - 1;
         states_switch[0] = false;
         states_switch[1] = true;
     }
     ::(states_switch[1]) -> atomic {
-        four!ACK_Switch;
+        out!ACK_Switch;
         states_switch[1] = false;
         states_switch[0] = true;
     }
@@ -174,11 +176,12 @@ proctype Switch(){
 // proctype watchdog(){
 //     do
 //     ::timeout -> assert(false)
-//     od
+//     odPostFlow_App
 // }
 
 init {
     /* Init process for all system states before corresponding processes will be started */
+    byte i;
     for (i: 0..(2 - 1)){
         states_app[i] = false;
     }
@@ -204,12 +207,18 @@ init {
     }
     states_switch[0] = true;
 
+    chan one = [N * 2] of {mtype}
+    chan two = [N * 2] of {mtype}
+    chan three = [N * 2] of {mtype}
+    chan four = [N * 2] of {mtype}
+    chan five = [N * 2] of {mtype}
+
     atomic {
-        run App();
-        run Controller();
-        run Channel1();
-        run Channel2();
-        run Switch();
+        run App(one);
+        run Controller(one, five, two);
+        run Channel1(two, three);
+        run Channel2(four, five);
+        run Switch(three, four);
     }
 }
 /* Anti deadlock rule */
