@@ -180,6 +180,13 @@ proctype Switch(chan in, out){
 // }
 
 init {
+
+    chan one = [N] of {mtype};
+    chan two = [N] of {mtype};
+    chan three = [N] of {mtype};
+    chan four = [N] of {mtype};
+    chan five = [N] of {mtype};
+    
     /* Init process for all system states before corresponding processes will be started */
     byte i;
     for (i: 0..(2 - 1)){
@@ -207,11 +214,6 @@ init {
     }
     states_switch[0] = true;
 
-    chan one = [N * 2] of {mtype}
-    chan two = [N * 2] of {mtype}
-    chan three = [N * 2] of {mtype}
-    chan four = [N * 2] of {mtype}
-    chan five = [N * 2] of {mtype}
 
     atomic {
         run App(one);
