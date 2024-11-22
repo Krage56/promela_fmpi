@@ -22,8 +22,10 @@ gcc -o pan pan.c
 
 Правило для проверки на отсутствие блокировок - `allRight`, на неотрицательность количества правил - `notNeg`.
 
-Выполнение правила `allRight` доказано:
+Выполнение правила `allRight` :
 ```bash
+error: max search depth too small
+...
 (Spin Version 6.5.2 -- 6 December 2019)
         + Partial Order Reduction
 
@@ -75,7 +77,9 @@ unreached in claim allRight
 pan: elapsed time 325 seconds
 pan: rate 271841.44 states/second
 ```
+т.е. инструмент не может гарантировать, что правило не будет нарушено, т.к. превышено число состояний, которыми он может оперировать; при заданном количестве состояний нарушений не обнаруживается
 
+  
 Для правила `notNeg` найдены нарушения (правило НЕ выполнено):
 ```bash
 (Spin Version 6.5.2 -- 6 December 2019)
